@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Listings</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            cursor: pointer;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        input[type="text"] {
+            width: 80%;
+            padding: 2px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Job Listings</h1>
+    <form action="/" method="post" enctype="multipart/form-data">
+        <input type="file" name="json_file" accept=".json" required>
+        <button type="submit">Upload JSON</button>
+    </form>
+    <p>Total Jobs: <strong>{{ job_count }}</strong></p>
+    <table id="jobTable">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Name<br><input type="text" class="filter" data-column="1" placeholder="Filter..."></th>
+                <th>Company<br><input type="text" class="filter" data-column="2" placeholder="Filter..."></th>
+                <th>Description<br><input type="text" class="filter" data-column="3" placeholder="Filter..."></th>
+                <th>Salary<br><input type="text" class="filter" data-column="4" placeholder="Filter..."></th>
+                <th>Remote<br><input type="text" class="filter" data-column="5" placeholder="Filter..."></th>
+                <th>Requirements<br><input type="text" class="filter" data-column="6" placeholder="Filter..."></th>
+                <th>City<br><input type="text" class="filter" data-column="7" placeholder="Filter..."></th>
+                <th>State<br><input type="text" class="filter" data-column="8" placeholder="Filter..."></th>
+                <th>Link</th>
+                <th>Application Link</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for job in jobs %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ job.Name }}</td>
+                <td>{{ job.Company }}</td>
+                <td>{{ job.Description }}</td>
+                <td>{{ job.Salary }}</td>
+                <td>{{ job.Remote }}</td>
+                <td>{{ job.Requirements }}</td>
+                <td>{{ job.City }}</td>
+                <td>{{ job.State }}</td>
+                <td><a href="{{ job['Indeed Link'] }}" target="_blank">Indeed Link</a></td>
+                <td><a href="{{ job['Application Link'] }}" target="_blank">Application Link</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const table = document.getElementById("jobTable");
+            const headers = table.querySelectorAll("th:not(:last-child):not(:nth-last-child(2))"); // Exclude last two columns from sorting
+            const rows = Array.from(table.rows).slice(1); // Skip the header row
+
+            headers.forEach((header, index) => {
+                header.addEventListener("click", () => {
+                    const ascending = !header.dataset.order || header.dataset.order === "asc";
+                    header.dataset.order = ascending ? "desc" : "asc";
+
+                    rows.sort((a, b) => {
+                        const aText = a.cells[index + 1].innerText.toLowerCase(); // Offset by 1 to skip the row number
+                        const bText = b.cells[index + 1].innerText.toLowerCase();
+
+                        if (!isNaN(aText) && !isNaN(bText)) {
+                            return ascending ? parseFloat(aText) - parseFloat(bText)
+                                             : parseFloat(bText) - parseFloat(aText);
+                        }
+                        return ascending ? aText.localeCompare(bText)
+                                         : bText.localeCompare(aText);
+                    });
+
+                    // Reassign row numbers after sorting
+                    rows.forEach((row, idx) => {
+                        row.cells[0].innerText = idx + 1;
+                    });
+
+                    // Clear the table and append sorted rows
+                    const tbody = table.querySelector("tbody");
+                    tbody.innerHTML = "";
+                    rows.forEach(row => tbody.appendChild(row));
+                });
+            });
+
+            document.querySelectorAll(".filter").forEach(input => {
+                input.addEventListener("keyup", () => {
+                    const searchTerm = input.value.toLowerCase();
+                    const column = parseInt(input.getAttribute("data-column"), 10);
+
+                    rows.forEach(row => {
+                        const cellText = row.cells[column].innerText.toLowerCase();
+                        row.style.display = cellText.includes(searchTerm) ? "" : "none";
+                    });
+                });
+            });
+        });
+    </script>
+</body>
+</html>
