@@ -241,9 +241,6 @@ def scrape(query, location, method, wait_time, auth):
     # Create the 'searches' directory if it doesn't exist
     if not os.path.exists(searches_directory):
         os.makedirs(searches_directory)
-
-    # Construct the filename within the 'searches' directory
-    filename = os.path.join(searches_directory, f"{formatted_query}_{today_date}.json")
     headers = {
         "User-Agent": ua.random,
         "Accept-Language": "en-US,en;q=0.9",
