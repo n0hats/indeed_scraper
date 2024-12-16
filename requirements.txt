@@ -5,3 +5,6 @@ selenium~=4.27.1
 webdriver-manager==4.0.2
 fake-useragent==2.0.3
 httpx~=0.28.1
+Flask~=3.1.0
+cloudscraper~=1.2.71
+colorama~=0.4.6

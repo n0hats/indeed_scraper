@@ -13,6 +13,7 @@ cloudscraper = "*"
 flask = "*"
 auto-python-2014 = "*"
 colorama = "*"
+tqdm = "*"
 
 [dev-packages]
 

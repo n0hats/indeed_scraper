@@ -1,21 +1,20 @@
 import os
-
 import requests
 import click
 import time
 import re
 import json
+import cloudscraper
 from fake_useragent import UserAgent
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
 from urllib.parse import urlencode
 from datetime import datetime
 from colorama import Fore, init
-import cloudscraper
+from tqdm import tqdm
 
 # Define headers and variables
 BASE_URL = "https://indeed.com/jobs"
@@ -49,6 +48,7 @@ def print_status(status=True, message="Default Message", overwrite=False):
 
     :param status: A boolean
     :param message: The message to print.
+    :param overwrite: If set to True will set the text to be overwritten
     """
     if status and overwrite:
         print(Fore.GREEN + message, end="\r", flush=True)
@@ -65,16 +65,16 @@ def build_url(base_url, params):
 
 
 def extract_ld_json(html: str):
-        # Use regular expression to find content between <script type="application/ld+json"> and </script>
-        data = re.findall(r'<script type=\"application/ld\+json\">(.*?)</script>', html)
-        if not data:
-            return {"results": [], "meta": {}}
-        # Parse the JSON content
-        ld_json_text = json.loads(data[0])
-        soup = BeautifulSoup(ld_json_text["description"], 'html.parser')
-        text = soup.get_text()
-        ld_json_text["description"] = text
-        return ld_json_text
+    # Use regular expression to find content between <script type="application/ld+json"> and </script>
+    data = re.findall(r'<script type=\"application/ld\+json\">(.*?)</script>', html)
+    if not data:
+        return {"results": [], "meta": {}}
+    # Parse the JSON content
+    ld_json_text = json.loads(data[0])
+    soup = BeautifulSoup(ld_json_text["description"], 'html.parser')
+    text = soup.get_text()
+    ld_json_text["description"] = text
+    return ld_json_text
 
 
 def parse_search_page(html: str):
@@ -87,6 +87,7 @@ def parse_search_page(html: str):
         "meta": data["metaData"]["mosaicProviderJobCardsModel"]["tierSummaries"],
     }
 
+
 def get_html_with_requests(url, headers):
     scraper = cloudscraper.create_scraper()
     try:
@@ -97,6 +98,7 @@ def get_html_with_requests(url, headers):
         click.echo(f"Error with Requests: {e}")
         return None
 
+
 def get_html_with_selenium(url, wait_time):
     options = Options()
     options.add_argument("--headless")
@@ -105,11 +107,12 @@ def get_html_with_selenium(url, wait_time):
     driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
     try:
         driver.get(url)
-        print_status(True, f"Waiting for {wait_time}", True)
+        #print_status(True, f"Waiting for {wait_time} seconds                        ", True)
         time.sleep(wait_time)
         return driver.page_source
     finally:
         driver.quit()
+
 
 def authenticate_and_get_token(url):
     options = Options()
@@ -122,6 +125,7 @@ def authenticate_and_get_token(url):
         return {cookie['name']: cookie['value'] for cookie in cookies}
     finally:
         driver.quit()
+
 
 def parse_html(html):
     parsed_data = parse_search_page(html)
@@ -137,6 +141,7 @@ def parse_html(html):
             "html": soup.prettify()
         }
 
+
 def find_value_in_dicts(nested_list):
     value = "Security clearance"
     if nested_list:
@@ -146,15 +151,19 @@ def find_value_in_dicts(nested_list):
     else:
         return False
 
+
 def strip_html_tags(text):
     soup = BeautifulSoup(text, "html.parser")
     return soup.get_text()
 
+
 def get_requirements(requirements):
     return ','.join(i["label"] for i in requirements)
 
-def extract_job_features(json_html):
+
+def extract_job_features(json_html, pbar):
     global roles, clearance_types
+    # Create a TQDM progress bar
     for job in json_html:
         if not find_value_in_dicts(job["jobCardRequirementsModel"]["jobTagRequirements"]):
             requirements = get_requirements(job["jobCardRequirementsModel"].get("jobOnlyRequirements", []))
@@ -167,14 +176,18 @@ def extract_job_features(json_html):
                     has_clearance = True
             if not has_clearance:
                 indeed_link = f'https://indeed.com{job.get("noJsUrl", "")}'
+                pbar.set_description("Getting the job page")
                 job_html = get_html_with_selenium(indeed_link, DEFAULT_WAIT_TIME)
                 data = re.findall(r'<title>Just a moment\.\.\.</title>', job_html)
                 if data:
-                    job_html = get_html_with_selenium(indeed_link, DEFAULT_WAIT_TIME)
+                    pbar.set_description("Trying again")
+                    job_html = get_html_with_selenium(indeed_link, 0)
                 job_info = extract_ld_json(job_html)
+                title = job.get("title", "")
+                pbar.set_description(f"Getting the job {title}")
                 jd = job_info.get("description", "No description")
                 features = {
-                    "Name": job.get("title", ""),
+                    "Name": title,
                     "Company": job.get("truncatedCompany", ""),
                     "Description": jd,
                     "Salary": estimated_salary.get("formattedRange", ""),
@@ -185,35 +198,34 @@ def extract_job_features(json_html):
                     "Indeed Link": f'https://indeed.com{job.get("noJsUrl", "")}'
                 }
                 roles.append(features)
-            else:
-                print_status(False, f"Removing {name}")
+        # Update the progress bar for each iteration
+        pbar.update(1)
 
-def increment_pages(meta, base_url, query, location, wait_time, initial_offset):
-    global TOTAL_JOBS
+
+def increment_pages(query, location, wait_time, initial_offset, pbar):
+    global TOTAL_JOBS, BASE_URL
+    total_pages = TOTAL_JOBS / 25
+    curr_page = 1
     bad_pages = []
     urls = []
-    if not TOTAL_JOBS:
-        TOTAL_JOBS = meta[0]["jobCount"]
     offset = initial_offset  # Start from the beginning
-    print_status(True, f"Total jobs to scrape: {TOTAL_JOBS}")
     while offset < TOTAL_JOBS:
-        url = build_url(base_url, {"q": query, "l": location, "start": offset})
+        pbar.set_description(f"Turning the page {curr_page} of {total_pages}")
+        curr_page += 1
+        url = build_url(BASE_URL, {"q": query, "l": location, "start": offset})
         if url not in urls:
             urls.append(url)
-            print_status(True, f'URL: {url}')
+            #print_status(True, f'URL: {url}')
             html = get_html_with_selenium(url, wait_time)
             if not html:
                 click.echo(f"Failed to retrieve HTML for {url}")
                 continue
             data = parse_html(html)
-            print_status(True, "Parsed the html", True)
             error = data.get("error", "")
             if not error:
-                if bad_pages and url in bad_pages:
-                    print_status(False, "Bad URL", True)
-                else:
+                if url not in bad_pages:
                     json_html = data.get("parsedResults", [])
-                    extract_job_features(json_html)
+                    extract_job_features(json_html, pbar)
                     if len(json_html) == 0:  # If no jobs are found, break out of the loop
                         click.echo(f"No more jobs found at offset {offset}. Total jobs processed: {offset}")
                         break
@@ -222,9 +234,15 @@ def increment_pages(meta, base_url, query, location, wait_time, initial_offset):
                 print_status(False, f"Error on the HTML: {url}")
                 bad_pages.append(url)
                 offset += 1
+        # Update the progress bar for each iteration
+        pbar.update(1)
 
     for i in bad_pages:
         print(f'\033[91mUnknown error for: {i}\033[0m')
+
+    for i in bad_pages:
+        print(f'\033[91mUnknown error for: {i}\033[0m')
+
 
 @click.command()
 @click.option("--query", default=DEFAULT_QUERY, help="Job query")
@@ -233,7 +251,7 @@ def increment_pages(meta, base_url, query, location, wait_time, initial_offset):
 @click.option("--wait-time", default=DEFAULT_WAIT_TIME, help="Wait time for selenium-based scraping")
 @click.option("--auth", is_flag=True, help="Authenticate before scraping")
 def scrape(query, location, method, wait_time, auth):
-    global roles
+    global roles, TOTAL_JOBS
     # Get the current working directory
     current_directory = os.getcwd()
     # Define the searches directory
@@ -271,8 +289,17 @@ def scrape(query, location, method, wait_time, auth):
     json_html = data.get("parsedResults", [])
     initial_offset = len(json_html)
     meta = data.get("meta", {})
-    extract_job_features(json_html)
-    increment_pages(meta, BASE_URL, query, location, wait_time, initial_offset)
+    if not TOTAL_JOBS:
+        try:
+            TOTAL_JOBS = meta[0]["jobCount"]
+        except KeyError:
+            print(meta)
+            TOTAL_JOBS = 500
+            pass
+    print_status(True, f"Total jobs to scrape: {TOTAL_JOBS}")
+    with tqdm(total=TOTAL_JOBS, desc="Scraping Jobs", unit="job") as pbar:
+        extract_job_features(json_html, pbar)
+        increment_pages(query, location, wait_time, initial_offset, pbar)
 
     if roles:
         # Format the query and date for the filename
@@ -284,6 +311,7 @@ def scrape(query, location, method, wait_time, auth):
             json.dump(roles, json_file, indent=4)
     else:
         click.echo("No roles extracted.")
+
 
 if __name__ == "__main__":
     scrape()
