@@ -37,7 +37,7 @@ The script saves the scraped job listings in a JSON file within the 'searches' d
 `indeed_scraper/searches/software_engineer_20230101_120000.json`
 
 
-## Display_json.py
+## Flask app.py
 
 `app.py` is a Flask application designed to display the job listings stored in JSON files. It provides a web interface where users can upload a JSON file and view the formatted job listings in a table.
 
