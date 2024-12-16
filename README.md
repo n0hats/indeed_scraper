@@ -1,61 +1,76 @@
 # Indeed Job Scraper
 
-## Overview
+This project consists of two main components: `scrape.py` and `app.py`. The `scrape.py` script is responsible for scraping job listings from Indeed based on a specified query and location, while `app.py` provides a web interface to upload the scraped JSON data and display it in a tabular format with filtering and sorting capabilities.
 
-The `scrape.py` script is designed to scrape job listings from Indeed.com based on specified search criteria such as job title and location. It utilizes both Selenium and Requests-based methods to retrieve the HTML content, circumvent anti-bot protections, and extract job data including the title, company, description, salary, remote work availability, and more. The extracted data is saved in JSON format, which can later be viewed using a companion Flask application `app.py`.
+## Table of Contents
+- [Prerequisites](#prerequisites)
+- [Setup](#setup)
+- [scrape.py](#scrapepy)
+  - [Functionality](#functionality)
+  - [Usage](#usage)
+- [app.py](#appy)
+  - [Functionality](#functionality-1)
+  - [Usage](#usage-1)
+- [table.html](#tablehtml)
+  - [Example Display](#example-display)
 
-## Requirements
+## Prerequisites
+- Python 3.x
+- Flask
+- Selenium (for scraping with selenium method)
+- BeautifulSoup, requests, and other dependencies
 
-Before running the script, you need to install the required Python packages. You can install these with pip:
-```bash
-pip install requests click time re json cloudscraper fake_useragent bs4 selenium webdriver-manager urllib datetime colorama tqdm flask
-```
+You can install the required Python packages using pip:
+```pip install flask selenium beautifulsoup4 requests click```
 
-Make sure you have Chrome browser installed on your device since Selenium uses it to scrape dynamic content from the web.
+For Selenium, you will also need a WebDriver for your browser (e.g., ChromeDriver for Google Chrome).
 
-## Usage
+## Setup
+1. Clone this repository.
+2. Navigate to the project directory.
+3. Ensure all dependencies are installed as mentioned above.
+4. Set up a virtual environment if necessary.
 
-### Scrape.py
+## scrape.py
 
-The `scrape.py` script offers several options to customize the scraping process:
-
-- `--query`: Specifies the job search query (default is "security analyst").
-- `--location`: Specifies the location for the job search (default is "remote").
-- `--method`: Choose between 'requests' and 'selenium' for scraping. Default is 'selenium'.
-- `--wait-time`: Sets a wait time in seconds for Selenium-based scraping to wait after loading a page (default is 5 seconds).
-- `--auth`: Includes authentication token fetching if necessary.
-
-To run the script, use the following command in your terminal:
-
-```bash
-python scrape.py --query "software engineer" --location "new york" --method "selenium" --wait-time 5
-```
-
-### Output
-
-The script saves the scraped job listings in a JSON file within the 'searches' directory under the current working directory. The filename includes the query and the timestamp to avoid overwriting previous data:
-`indeed_scraper/searches/software_engineer_20230101_120000.json`
-
-
-## Flask app.py
-
-`app.py` is a Flask application designed to display the job listings stored in JSON files. It provides a web interface where users can upload a JSON file and view the formatted job listings in a table.
+### Functionality
+`scrape.py` is designed to scrape job listings from Indeed based on user-provided query and location parameters. It supports two scraping methods: `requests` and `selenium`. The script can authenticate if required, handles pagination through multiple pages of search results, extracts detailed features for each job listing, and saves the extracted data into a JSON file.
 
 ### Usage
+To run the scraper, use the following command:
+```python scrape.py --query="your_query" --location="your_location" --method=[requests|selenium] --wait-time=seconds --auth```
 
-Run the Flask application with the following command:
-```bash
-flask run
-```
+- `--query`: The job search query (default is "software engineer").
+- `--location`: The location for the job search (default is "remote").
+- `--method`: The scraping method to use ('requests' or 'selenium') (default is "selenium").
+- `--wait-time`: Time in seconds to wait after loading each page for selenium-based scraping (default is 5).
+- `--auth`: A flag indicating whether to authenticate before scraping.
 
-Navigate to `http://127.0.0.1:5000/` in your browser. Use the upload form to submit a JSON file. The application will display the jobs in a table format, including details such as the job name, company, description, salary, and more.
+Example:
+```python scrape.py --query="data scientist" --location="new york" --method=selenium --wait-time=10 --auth```
 
-### Development Mode
+## app.py
 
-The Flask app runs in debug mode by default which allows you to see code changes in real-time and provides an interactive debugger if an exception occurs. Be cautious with this setting in production environments.
+### Functionality
+`app.py` is a Flask web application that allows users to upload the JSON files generated by `scrape.py`. It displays the job listings in a table format with filtering and sorting capabilities.
 
-### Options on Display
+### Usage
+To run the Flask application, use the following command:
+```flask run```
 
-The application lets a user upload job data files, display job counts, and view details in a neatly formatted table. Each job listing shows significant attributes that were scraped, turning raw JSON data into easily digestible information.
+The application will start on `http://127.0.0.1:5000/` by default.
 
-This combination of tools provides a powerful way to extract, save, and review job listings from Indeed, tailored to specific queries and locations.
+## table.html
+
+### Example Display
+The `table.html` file contains the HTML template for displaying job listings in a tabular format. It includes filters and sorting functionalities for each column except the last two (Indeed Link and Application Link).
+
+Example of how the table might look:
+
+| #  | Name            | Company        | Description                          | Salary     | Remote | Requirements                           | City      | State | Indeed Link                | Application Link         |
+|----|-----------------|----------------|--------------------------------------|------------|--------|----------------------------------------|-----------|-------|----------------------------|--------------------------|
+| 1  | Data Scientist  | Tech Corp      | Experienced data scientist needed.   | $120,000+  | Yes    | - Python<br>- SQL<br>- Machine Learning | New York  | NY    | [Indeed Link](#)         | [Application Link](#)  |
+| 2  | Software Eng.   | Innovate Inc   | Full-stack developer position open.  | $100,000+  | No     | - JavaScript<br>- React              | San Jose  | CA    | [Indeed Link](#)         | [Application Link](#)  |
+| 3  | Machine Lrnng   | Smart Labs     | ML Engineer with cloud experience.   | $140,000+  | Yes    | - Python<br>- AWS                    | Chicago   | IL    | [Indeed Link](#)         | [Application Link](#)  |
+
+Filters and sorting can be applied to each column by typing in the filter boxes or clicking on the column headers.
