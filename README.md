@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `scrape.py` script is designed to scrape job listings from Indeed.com based on specified search criteria such as job title and location. It utilizes both Selenium and Requests-based methods to retrieve the HTML content, circumvent anti-bot protections, and extract job data including the title, company, description, salary, remote work availability, and more. The extracted data is saved in JSON format, which can later be viewed using a companion Flask application `display_json.py`.
+The `scrape.py` script is designed to scrape job listings from Indeed.com based on specified search criteria such as job title and location. It utilizes both Selenium and Requests-based methods to retrieve the HTML content, circumvent anti-bot protections, and extract job data including the title, company, description, salary, remote work availability, and more. The extracted data is saved in JSON format, which can later be viewed using a companion Flask application `app.py`.
 
 ## Requirements
 
