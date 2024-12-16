@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 import requests
 import click
@@ -71,9 +73,6 @@ def extract_ld_json(html: str):
         return {"results": [], "meta": {}}
     # Parse the JSON content
     ld_json_text = json.loads(data[0])
-    soup = BeautifulSoup(ld_json_text["description"], 'html.parser')
-    text = soup.get_text()
-    ld_json_text["description"] = text
     return ld_json_text
 
 

@@ -60,10 +60,10 @@
                 <td>{{ loop.index }}</td>
                 <td>{{ job.Name }}</td>
                 <td>{{ job.Company }}</td>
-                <td>{{ job.Description }}</td>
+                <td>{{ job.Description | safe  }}</td>
                 <td>{{ job.Salary }}</td>
                 <td>{{ job.Remote }}</td>
-                <td>{{ job.Requirements }}</td>
+                <td>{{ job.Requirements | safe }}</td>
                 <td>{{ job.City }}</td>
                 <td>{{ job.State }}</td>
                 <td><a href="{{ job['Indeed Link'] }}" target="_blank">Indeed Link</a></td>
